@@ -1,0 +1,74 @@
+# docker-compose 버전을 명시합니다. (도커 버전 19.03.0 이상 <-> compose 버전 3.8)
+version: "3.8"
+
+# 서비스들을 정의하는 부분입니다.
+services:
+  # nginx 서비스 정의
+  nginx:
+    build: ./requirements/nginx  # nginx 이미지를 빌드할 Dockerfile의 위치
+    container_name: nginx  # 생성될 컨테이너의 이름
+    image: nginx  # 사용할 이미지 이름
+    ports:
+      - "443:443"  # 호스트의 443 포트와 컨테이너의 443 포트를 연결
+    restart: always  # 컨테이너가 종료되면 항상 재시작
+    depends_on:
+      - wordpress  # wordpress 서비스가 먼저 실행된 후에 nginx 서비스가 실행되도록 설정
+    networks:
+      - inception_network  # 사용할 네트워크
+    env_file:
+      - .env  # 환경 변수 파일
+    volumes:
+      - volume_wordpress:/var/www/wordpress  # 호스트의 volume_wordpress 볼륨을 컨테이너의 /var/www/wordpress에 마운트(중앙난방을 통한 난방시설)
+
+  # wordpress 서비스 정의
+  wordpress:
+    depends_on:
+      - mariadb  # mariadb 서비스가 먼저 실행된 후에 wordpress 서비스가 실행되도록 설정
+    build: ./requirements/wordpress  # wordpress 이미지를 빌드할 Dockerfile의 위치
+    container_name: wordpress  # 생성될 컨테이너의 이름
+    image: wordpress  # 사용할 이미지 이름
+    ports:
+      - "9000:9000"  # 호스트의 9000 포트와 컨테이너의 9000 포트를 연결
+    restart: always  # 컨테이너가 종료되면 항상 재시작
+    networks:
+      - inception_network  # 사용할 네트워크
+    env_file:
+      - .env  # 환경 변수 파일
+    volumes:
+      - volume_wordpress:/var/www/wordpress  # 호스트의 volume_wordpress 볼륨을 컨테이너의 /var/www/wordpress에 마운트
+
+  # mariadb 서비스 정의
+  mariadb:
+    build: ./requirements/mariadb  # mariadb 이미지를 빌드할 Dockerfile의 위치
+    container_name: mariadb  # 생성될 컨테이너의 이름
+    image: mariadb  # 사용할 이미지 이름
+    ports:
+      - "3306:3306"  # 호스트의 3306 포트와 컨테이너의 3306 포트를 연결
+    restart: always  # 컨테이너가 종료되면 항상 재시작
+    networks:
+      - inception_network  # 사용할 네트워크
+    env_file:
+      - .env  # 환경 변수 파일
+    volumes:
+      - volume_mariadb:/var/lib/mysql  # 호스트의 volume_mariadb 볼륨을 컨테이너의 /var/lib/mysql에 마운트
+
+# 네트워크 정의 부분입니다.
+networks:
+  inception_network:
+    driver: bridge  # 네트워크 드라이버를 bridge로 설정해서 동알한 브리지 내에서 서로 통신가능하도록 함
+
+# 볼륨 정의 부분입니다.
+volumes:
+  # mariadb 볼륨 정의
+  volume_mariadb:
+    driver_opts:
+      device: /home/hwankim/data/database  # 호스트의 해당 경로를 볼륨으로 사용
+      type: volume  # 볼륨 타입을 명시
+      o: bind  # 바인드 마운트 옵션
+
+  # wordpress 볼륨 정의
+  volume_wordpress:
+    driver_opts:
+      device: /home/hwankim/data/wordpress  # 호스트의 해당 경로를 볼륨으로 사용
+      type: volume  # 볼륨 타입을 명시
+      o: bind  # 바인드 마운트 옵션
